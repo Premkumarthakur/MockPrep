@@ -18,6 +18,8 @@ const VideoCall = () => {
   const [peers, setPeers] = useState([]);
   const [myUserId, setMyUserId] = useState(null);
   const [userCount, setUserCount] = useState(0);
+  const [isAudioOn, setIsAudioOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(true);
   const myVideo = useRef();
   const peersRef = useRef({});
   const streamRef = useRef();
@@ -61,7 +63,6 @@ const VideoCall = () => {
         myVideo.current.srcObject = stream;
 
         socket.emit("join-room", params.id);
-
         socket.on("your-id", (id) => setMyUserId(id));
 
         socket.on("all-users", (users) => {
@@ -115,6 +116,7 @@ const VideoCall = () => {
     const audioTrack = streamRef.current?.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
+      setIsAudioOn(audioTrack.enabled);
     }
   };
 
@@ -122,40 +124,39 @@ const VideoCall = () => {
     const videoTrack = streamRef.current?.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
+      setIsVideoOn(videoTrack.enabled);
     }
   };
 
   return (
     <div className="flex h-screen p-4 gap-4">
-      {/* Left side - Video section (50% width) */}
-      <div className="w-1/2 flex flex-col items-center gap-4">
-        <div className="flex flex-col gap-4 w-full">
-          <div className="relative">
-            <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-full h-60" />
-            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
-              You ({role})
-            </div>
+      {/* Left - Video Section (50% width) */}
+      <div className="w-1/2 flex flex-col gap-4">
+        <div className="h-1/2 relative">
+          <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-full h-full" />
+          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
+            You ({role})
           </div>
-
-          {peers.map((peerObj, index) => (
-            <Video key={index} peer={peerObj.peer} />
-          ))}
         </div>
 
-        <div className="flex gap-4 mt-4">
-          <button onClick={toggleAudio} className="bg-gray-600 text-white p-3 rounded-lg">
-            Toggle Audio
+        {peers.map((peerObj, index) => (
+          <Video key={index} peer={peerObj.peer} />
+        ))}
+
+        <div className="flex justify-center gap-4 mt-4">
+          <button onClick={toggleAudio} className="p-2 rounded-lg bg-gray-600">
+            <img src={isAudioOn ? "/audio-on.png" : "/audio-off.png"} alt="Audio Toggle" className="w-8 h-8" />
           </button>
-          <button onClick={toggleVideo} className="bg-gray-600 text-white p-3 rounded-lg">
-            Toggle Video
+          <button onClick={toggleVideo} className="p-2 rounded-lg bg-gray-600">
+            <img src={isVideoOn ? "/video-on.png" : "/video-off.png"} alt="Video Toggle" className="w-8 h-8" />
           </button>
-          <button onClick={handleDisconnect} className="bg-red-600 text-white p-3 rounded-lg flex items-center">
-            <BsTelephoneX className="text-2xl" />
+          <button onClick={handleDisconnect} className="p-2 rounded-lg bg-red-600 flex items-center">
+            <BsTelephoneX className="text-2xl text-white" />
           </button>
         </div>
       </div>
 
-      {/* Right side - Chat section (50% width) */}
+      {/* Right - Chat Section (50% width) */}
       <div className="w-1/2 border-l border-gray-400 p-4">
         <Chat />
       </div>
@@ -175,8 +176,8 @@ const Video = ({ peer }) => {
   }, [peer]);
 
   return (
-    <div className="relative">
-      <video ref={ref} autoPlay playsInline className="rounded-lg w-full h-60" />
+    <div className="h-1/2 relative">
+      <video ref={ref} autoPlay playsInline className="rounded-lg w-full h-full" />
       <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
         Interviewer
       </div>
