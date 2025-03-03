@@ -145,10 +145,10 @@ const VideoCall = () => {
 
         <div className="flex justify-center gap-4 mt-4">
           <button onClick={toggleAudio} className="p-2 rounded-lg bg-gray-600">
-            <img src={isAudioOn ? "/audio-on.png" : "/audio-off.png"} alt="Audio Toggle" className="w-8 h-8" />
+            <img src={isAudioOn ? "/mic.png" : "/no-noise.png"} alt="Audio Toggle" className="w-8 h-8" />
           </button>
           <button onClick={toggleVideo} className="p-2 rounded-lg bg-gray-600">
-            <img src={isVideoOn ? "/video-on.png" : "/video-off.png"} alt="Video Toggle" className="w-8 h-8" />
+            <img src={isVideoOn ? "/video-camera.png" : "/no-video.png"} alt="Video Toggle" className="w-8 h-8" />
           </button>
           <button onClick={handleDisconnect} className="p-2 rounded-lg bg-red-600 flex items-center">
             <BsTelephoneX className="text-2xl text-white" />
