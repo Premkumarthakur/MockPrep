@@ -7,7 +7,6 @@ import Chat from "../components/Chat";
 import { useStore } from "../store/store.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
 const socket = io.connect(`${API_URL}`, {
   transports: ["websocket", "polling"],
   withCredentials: true,
@@ -19,9 +18,6 @@ const VideoCall = () => {
   const [peers, setPeers] = useState([]);
   const [myUserId, setMyUserId] = useState(null);
   const [userCount, setUserCount] = useState(0);
-  const [isSharing, setIsSharing] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true);
-
   const myVideo = useRef();
   const peersRef = useRef({});
   const streamRef = useRef();
@@ -39,7 +35,6 @@ const VideoCall = () => {
       socket.emit("sending-signal", { userToSignal, callerID, signal });
     });
 
-    peer.on("error", (err) => console.log("Peer error:", err));
     return peer;
   }, []);
 
@@ -132,20 +127,22 @@ const VideoCall = () => {
 
   return (
     <div className="flex h-screen p-4 gap-4">
-      {/* Video Section */}
-      <div className="flex-1 flex flex-col items-center gap-4">
-        <div className="relative">
-          <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-96" />
-          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
-            You ({role})
+      {/* Left side - Video section (50% width) */}
+      <div className="w-1/2 flex flex-col items-center gap-4">
+        <div className="flex flex-col gap-4 w-full">
+          <div className="relative">
+            <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-full h-60" />
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
+              You ({role})
+            </div>
           </div>
+
+          {peers.map((peerObj, index) => (
+            <Video key={index} peer={peerObj.peer} />
+          ))}
         </div>
 
-        {peers.map((peerObj, index) => (
-          <Video key={index} peer={peerObj.peer} />
-        ))}
-
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-4">
           <button onClick={toggleAudio} className="bg-gray-600 text-white p-3 rounded-lg">
             Toggle Audio
           </button>
@@ -158,8 +155,8 @@ const VideoCall = () => {
         </div>
       </div>
 
-      {/* Chat Section */}
-      <div className="w-96">
+      {/* Right side - Chat section (50% width) */}
+      <div className="w-1/2 border-l border-gray-400 p-4">
         <Chat />
       </div>
     </div>
@@ -179,9 +176,9 @@ const Video = ({ peer }) => {
 
   return (
     <div className="relative">
-      <video ref={ref} autoPlay playsInline className="rounded-lg w-96" />
+      <video ref={ref} autoPlay playsInline className="rounded-lg w-full h-60" />
       <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
-        Peer
+        Interviewer
       </div>
     </div>
   );
