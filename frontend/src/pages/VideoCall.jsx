@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Peer from "simple-peer";
 import io from "socket.io-client";
 import { useParams, useNavigate } from "react-router-dom";
-import { BsTelephoneX, BsCameraVideo, BsMic, BsMicMute, BsCameraVideoOff } from "react-icons/bs";
+import { BsTelephoneX } from "react-icons/bs";
 import Chat from "../components/Chat";
 import { useStore } from "../store/store.js";
 
@@ -19,104 +19,124 @@ const VideoCall = () => {
   const [peers, setPeers] = useState([]);
   const [myUserId, setMyUserId] = useState(null);
   const [userCount, setUserCount] = useState(0);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [videoEnabled, setVideoEnabled] = useState(true);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  
-  const myVideo = useRef();
-  const peersRef = useRef({});
-  const streamRef = useRef();
-  const videoContainerRef = useRef();
-  
+  const videoContainer = useRef();
+
   const navigate = useNavigate();
   const params = useParams();
 
+  const myVideo = useRef();
+  const peersRef = useRef({});
+  const streamRef = useRef();
+
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
-      streamRef.current = stream;
-      myVideo.current.srcObject = stream;
-      socket.emit("join-room", params.id);
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        streamRef.current = stream;
+        myVideo.current.srcObject = stream;
 
-      socket.on("your-id", (id) => setMyUserId(id));
+        socket.emit("join-room", params.id);
 
-      socket.on("all-users", (users) => {
-        setUserCount(users.length + 1);
-        const newPeers = users.map((userID) => {
-          if (!peersRef.current[userID]) {
-            const peer = new Peer({ initiator: true, trickle: false, stream });
-            peersRef.current[userID] = peer;
-            return { peerID: userID, peer };
+        socket.on("your-id", (id) => {
+          setMyUserId(id);
+        });
+
+        socket.on("all-users", (users) => {
+          users.forEach((userID) => {
+            if (!peersRef.current[userID]) {
+              const peer = createPeer(userID, socket.id, stream);
+              peersRef.current[userID] = peer;
+              setPeers((prevPeers) => [...prevPeers, { peerID: userID, peer }]);
+            }
+          });
+        });
+
+        socket.on("user-joined", (payload) => {
+          if (!peersRef.current[payload.callerID]) {
+            const peer = addPeer(payload.signal, payload.callerID, stream);
+            peersRef.current[payload.callerID] = peer;
+            setPeers((prevPeers) => [
+              ...prevPeers,
+              { peerID: payload.callerID, peer },
+            ]);
           }
-          return null;
-        }).filter(Boolean);
-        setPeers((prevPeers) => [...prevPeers, ...newPeers]);
+        });
+
+        socket.on("receiving-returned-signal", (payload) => {
+          const peer = peersRef.current[payload.id];
+          if (peer) {
+            peer.signal(payload.signal);
+          }
+        });
+
+        socket.on("user-disconnected", (userId) => {
+          removePeer(userId);
+        });
       });
 
-      socket.on("user-joined", (payload) => {
-        setUserCount((prevCount) => prevCount + 1);
-        if (!peersRef.current[payload.callerID]) {
-          const peer = new Peer({ initiator: false, trickle: false, stream });
-          peer.signal(payload.signal);
-          peersRef.current[payload.callerID] = peer;
-          setPeers((prevPeers) => [...prevPeers, { peerID: payload.callerID, peer }]);
-        }
-      });
-
-      socket.on("user-disconnected", (userId) => {
-        setUserCount((prevCount) => prevCount - 1);
-        if (peersRef.current[userId]) {
-          peersRef.current[userId].destroy();
-          delete peersRef.current[userId];
-          setPeers((prevPeers) => prevPeers.filter((p) => p.peerID !== userId));
-        }
-      });
-    });
+    return () => {
+      socket.emit("disconnect-from-room", params.id);
+      socket.off("your-id");
+      socket.off("all-users");
+      socket.off("user-joined");
+      socket.off("receiving-returned-signal");
+      socket.off("user-disconnected");
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      Object.values(peersRef.current).forEach((peer) => peer.destroy());
+      peersRef.current = {};
+      setPeers([]);
+    };
   }, [params.id]);
 
-  const toggleVideo = () => {
-    setVideoEnabled((prev) => !prev);
-    streamRef.current.getVideoTracks()[0].enabled = !videoEnabled;
+  const createPeer = (userToSignal, callerID, stream) => {
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream,
+    });
+
+    peer.on("signal", (signal) => {
+      socket.emit("sending-signal", { userToSignal, callerID, signal });
+    });
+
+    return peer;
   };
 
-  const toggleAudio = () => {
-    setAudioEnabled((prev) => !prev);
-    streamRef.current.getAudioTracks()[0].enabled = !audioEnabled;
+  const addPeer = (incomingSignal, callerID, stream) => {
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream,
+    });
+
+    peer.on("signal", (signal) => {
+      socket.emit("returning-signal", { signal, callerID });
+    });
+
+    peer.signal(incomingSignal);
+    return peer;
   };
 
-  const handleDisconnect = () => {
-    socket.emit("disconnect-from-room", params.id);
-    navigate("/createroom");
+  const removePeer = (peerId) => {
+    if (peersRef.current[peerId]) {
+      peersRef.current[peerId].destroy();
+      delete peersRef.current[peerId];
+    }
+    setPeers((prevPeers) => prevPeers.filter((p) => p.peerID !== peerId));
   };
 
   return (
-    <div className="p-4 flex flex-row items-start gap-4">
-      <div className="flex flex-col gap-4 w-3/4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-full h-auto" />
-            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
-              You ({role})
-            </div>
-          </div>
-          {peers.map(({ peerID, peer }) => (
-            <Video key={peerID} peer={peer} />
-          ))}
-        </div>
-
-        <div className="flex justify-center gap-4 mt-4">
-          <button onClick={toggleVideo} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-            {videoEnabled ? <BsCameraVideo /> : <BsCameraVideoOff />} Video
-          </button>
-          <button onClick={toggleAudio} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-            {audioEnabled ? <BsMic /> : <BsMicMute />} Audio
-          </button>
-          <button onClick={handleDisconnect} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-            <BsTelephoneX /> End Call
-          </button>
-        </div>
+    <div className="p-8 flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center">
+        <video ref={myVideo} autoPlay playsInline muted className="rounded-lg w-80" />
+        <p className="text-white">You ({role})</p>
       </div>
 
-      <Chat isChatOpen={isChatOpen} setIsChatOpen={setIsChatOpen} />
+      {peers.map((peer, index) => (
+        <Video key={index} peer={peer.peer} />
+      ))}
+
+      <Chat />
     </div>
   );
 };
@@ -125,21 +145,15 @@ const Video = ({ peer }) => {
   const ref = useRef();
 
   useEffect(() => {
-    if (peer) {
-      peer.on("stream", (stream) => {
-        if (ref.current) {
-          ref.current.srcObject = stream;
-        }
-      });
-    }
+    peer.on("stream", (stream) => {
+      ref.current.srcObject = stream;
+    });
   }, [peer]);
 
   return (
-    <div className="relative">
-      <video ref={ref} autoPlay playsInline className="rounded-lg w-full h-auto" />
-      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
-        Peer
-      </div>
+    <div className="flex flex-col items-center">
+      <video ref={ref} autoPlay playsInline className="rounded-lg w-80" />
+      <p className="text-white">Interviewer</p>
     </div>
   );
 };
