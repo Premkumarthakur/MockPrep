@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { BsTelephoneX } from "react-icons/bs";
 import Chat from "../components/Chat";
 import { useStore } from "../store/store.js";
+import "./VideoCall.css"; // Import custom CSS file
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -86,28 +87,28 @@ const VideoCall = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
+    <div className="video-call-container">
       {/* Screen Share Preview */}
-      <div ref={videoContainer} className="hidden p-4 bg-gray-800">
-        <div className="max-w-4xl mx-auto">
+      <div ref={videoContainer} className="screen-share-preview hidden">
+        <div className="screen-share-wrapper">
           <video
             ref={screenVideoRef}
             autoPlay
             playsInline
-            className="w-full rounded-lg border-2 border-green-400"
+            className="screen-share-video"
           />
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex gap-4 p-4 h-[calc(100vh-100px)]">
+      <div className="main-content">
         {/* Videos Column - 50% width */}
-        <div className="w-1/2 flex flex-col gap-4 overflow-y-auto pr-2">
+        <div className="videos-column">
           {/* Local Video */}
-          <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video">
+          <div className="video-wrapper local-video">
             <img
               ref={hiddenVoice}
-              className="absolute top-2 right-2 w-8 p-1 bg-gray-600/80 rounded"
+              className="muted-indicator"
               src="/no-noise.png"
               alt="Muted"
             />
@@ -116,11 +117,9 @@ const VideoCall = () => {
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover"
+              className="video-element"
             />
-            <div className="absolute bottom-2 left-2 px-3 py-1 bg-black/50 text-white rounded text-sm">
-              You ({role})
-            </div>
+            <div className="video-label">You ({role})</div>
           </div>
 
           {/* Remote Peers */}
@@ -130,50 +129,33 @@ const VideoCall = () => {
         </div>
 
         {/* Chat Column - 50% width */}
-        <div className="w-1/2 bg-gray-800 rounded-xl p-4 flex flex-col">
+        <div className="chat-column">
           <Chat />
         </div>
       </div>
 
       {/* Control Bar */}
-      <div className="h-20 bg-gray-800 flex items-center justify-center gap-4">
-        <button
-          ref={myVoice}
-          onClick={handleVoice}
-          className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition"
-        >
-          <img src="/no-noise.png" className="w-8 h-8" alt="Microphone" />
+      <div className="control-bar">
+        <button ref={myVoice} onClick={handleVoice} className="control-button">
+          <img src="/no-noise.png" className="control-icon" alt="Microphone" />
         </button>
 
-        <button
-          ref={videoRef}
-          onClick={handleVideo}
-          className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition"
-        >
-          <img src="/no-video.png" className="w-8 h-8" alt="Camera" />
+        <button ref={videoRef} onClick={handleVideo} className="control-button">
+          <img src="/no-video.png" className="control-icon" alt="Camera" />
         </button>
 
         {!isSharing ? (
-          <button
-            onClick={startScreenShare}
-            className="px-6 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition"
-          >
+          <button onClick={startScreenShare} className="control-button share-button">
             Share Screen
           </button>
         ) : (
-          <button
-            onClick={stopScreenShare}
-            className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition"
-          >
+          <button onClick={stopScreenShare} className="control-button stop-share-button">
             Stop Sharing
           </button>
         )}
 
-        <button
-          onClick={handleDisconnect}
-          className="p-3 bg-red-600 hover:bg-red-700 rounded-full transition"
-        >
-          <BsTelephoneX className="text-2xl text-white" />
+        <button onClick={handleDisconnect} className="control-button disconnect-button">
+          <BsTelephoneX className="disconnect-icon" />
         </button>
       </div>
     </div>
@@ -199,22 +181,20 @@ const Video = ({ peer }) => {
   }, [peer]);
 
   return (
-    <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video">
+    <div className="video-wrapper remote-video">
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        className="w-full h-full object-cover"
+        className="video-element"
       />
       <img
         ref={mutedRef}
-        className="absolute top-2 right-2 w-8 p-1 bg-gray-600/80 rounded"
+        className="muted-indicator"
         src="/no-noise.png"
         alt="Muted"
       />
-      <div className="absolute bottom-2 left-2 px-3 py-1 bg-black/50 text-white rounded text-sm">
-        Peer
-      </div>
+      <div className="video-label">Peer</div>
     </div>
   );
 };
