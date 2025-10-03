@@ -10,7 +10,7 @@ router.post('/chat', async (req, res) => {
     console.log("user prompt: "+message);
     
     const genAI = new GoogleGenerativeAI(ENV_VARS.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); 
 
     // const prompt = `You are a chatbot. Reply to this: ${message}`;
     
